@@ -14,7 +14,7 @@ public class Db {
     public void connect() {
         try {
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:main.db");
+            connection = DriverManager.getConnection("jdbc:sqlite:Formula1News.db");
             statement = connection.createStatement();
             System.out.println("DataBase connect");
         } catch (ClassNotFoundException | SQLException e) {
@@ -43,9 +43,9 @@ public class Db {
 
     }
 
-    public List<Article> getFromDb(int i) {
+    public List<Article> getArticlesFromDb(int count) {
         List<Article> articles = new ArrayList<>();
-        String query = String.format("SELECT date, title, link, text FROM articles ORDER BY id DESC LIMIT %d", i);
+        String query = String.format("SELECT date, title, link, text FROM articles ORDER BY id DESC LIMIT %d", count);
         try {
             ResultSet resultSet = statement.executeQuery(query);
             while (resultSet.next()) {
@@ -60,6 +60,21 @@ public class Db {
             e.printStackTrace();
         }
         return articles;
+    }
+
+    public List<String> getTitleFromDb(int count) {
+        List<String> titles = new ArrayList<>();
+        String query = String.format("SELECT title FROM articles ORDER BY id DESC LIMIT %d", count);
+        try {
+            ResultSet resultSet = statement.executeQuery(query);
+            while (resultSet.next()) {
+                titles.add(resultSet.getString("title"));
+            }
+            resultSet.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return titles;
     }
 
 }

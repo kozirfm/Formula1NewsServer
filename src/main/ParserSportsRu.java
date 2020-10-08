@@ -1,6 +1,7 @@
 package main;
 
 import data.Article;
+import database.Db;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -10,14 +11,26 @@ import java.util.*;
 
 public class ParserSportsRu {
 
+    Db db = new Db();
+
     private final List<String> newsDate = new ArrayList<>();
     private final List<String> newsTitle = new ArrayList<>();
     private final List<String> newsLink = new ArrayList<>();
     private final List<String> newsText = new ArrayList<>();
     private final List<Article> articles = new ArrayList<>();
 
-    public List<Article> getArticles() {
-        return articles;
+    public void start() {
+        System.out.println("Start session: " + new Date().toString());
+        db.connect();
+        parse();
+        if (articles.size() != 0) {
+            articles.forEach(article -> db.addToDb(article));
+            System.out.println("Articles added: " + articles.size());
+        } else {
+            System.out.println("New articles is not found");
+        }
+        db.disconnect();
+        System.out.println("End session: " + new Date().toString());
     }
 
     public void parse() {
@@ -26,18 +39,36 @@ public class ParserSportsRu {
             Elements elements = doc.getElementsByClass("nl-item");
             elements.forEach(element -> element.select("a").eachText().forEach(s -> {
                 if (s.equals("Sports.ru")) {
-                    List<String> list = element.getElementsByClass("date").eachText();
+                    List<String> date = element.getElementsByClass("date").eachText();
                     Elements news = element.getElementsByClass("short-text");
                     newsTitle.addAll(news.eachText());
                     newsLink.addAll(news.eachAttr("href"));
-                    newsDate.addAll(changeListDate(list));
+                    newsDate.addAll(changeListDate(date));
                 }
             }));
-            newsLink.forEach(this::parseNewsTextFromLink);
-            changeToObject(newsDate, newsTitle, newsLink, newsText);
+            getNewArticlesLink();
+            changeToObject(newsDate, newsTitle, newsLink, newsText, newsText.size());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private List<String> changeListDate(List<String> list) {
+        String day = list.get(0);
+        List<String> newDateList = new ArrayList<>();
+        for (int i = 1; i < list.size(); i++) {
+            newDateList.add(day + " " + list.get(i));
+        }
+        return newDateList;
+    }
+
+    private void getNewArticlesLink() {
+        List<String> titles = db.getTitleFromDb(newsTitle.size());
+        newsTitle.forEach(title -> {
+            if (!titles.contains(title)) {
+                parseNewsTextFromLink(newsLink.get(newsTitle.indexOf(title)));
+            }
+        });
     }
 
     private void parseNewsTextFromLink(String link) {
@@ -53,17 +84,8 @@ public class ParserSportsRu {
         }
     }
 
-    private List<String> changeListDate(List<String> list) {
-        String day = list.get(0);
-        List<String> newDateList = new ArrayList<>();
-        for (int i = 1; i < list.size(); i++) {
-            newDateList.add(day + " " + list.get(i));
-        }
-        return newDateList;
-    }
-
-    private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text) {
-        for (int i = 0; i < date.size(); i++) {
+    private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text, int newArticlesCount) {
+        for (int i = 0; i < newArticlesCount; i++) {
             articles.add(new Article(
                     date.get(i),
                     title.get(i),
@@ -72,4 +94,5 @@ public class ParserSportsRu {
         }
         Collections.reverse(articles);
     }
+
 }
