@@ -24,8 +24,12 @@ public class ParserSportsRu {
         db.connect();
         parse();
         if (articles.size() != 0) {
-            articles.forEach(article -> db.addToDb(article));
-            System.out.println("Articles added: " + articles.size());
+            articles.forEach(article -> {
+                if (!article.getText().startsWith("Sports.ru")) {
+                    db.addToDb(article);
+                    System.out.println("Articles added: " + articles.size());
+                }
+            });
         } else {
             System.out.println("New articles is not found");
         }
