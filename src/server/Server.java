@@ -9,6 +9,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
 
@@ -22,24 +24,27 @@ public class Server {
 
         try (ServerSocket server = new ServerSocket(5050)) {
             System.out.println("Server started");
+            ExecutorService fixedThreadPool = Executors.newFixedThreadPool(5);
             while (true) {
                 Socket socket = server.accept();
-                new Thread(() -> {
+                fixedThreadPool.execute(() -> {
                     try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
                         String line = bufferedReader.readLine();
-                        if (line.startsWith("GET")) {
-                            HashMap<String, Integer> values = parseLine(line);
-                            if (values.containsKey("count")) {
-                                try (OutputStream outputStream = socket.getOutputStream()) {
-                                    Db db = new Db();
-                                    db.connect();
-                                    List<Article> articles = db.getArticlesFromDb(values.get("count"));
-                                    db.disconnect();
-                                    Gson gson = new Gson();
-                                    String page = HEADER + gson.toJson(articles);
-                                    outputStream.write(page.getBytes());
-                                } catch (IOException e) {
-                                    e.printStackTrace();
+                        if (line != null) {
+                            if (line.startsWith("GET")) {
+                                HashMap<String, Integer> values = parseLine(line);
+                                if (values.containsKey("count")) {
+                                    try (OutputStream outputStream = socket.getOutputStream()) {
+                                        Db db = new Db();
+                                        db.connect();
+                                        List<Article> articles = db.getArticlesFromDb(values.get("count"));
+                                        db.disconnect();
+                                        Gson gson = new Gson();
+                                        String page = HEADER + gson.toJson(articles);
+                                        outputStream.write(page.getBytes());
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
                         }
@@ -47,16 +52,20 @@ public class Server {
                         e.printStackTrace();
                     } finally {
                         try {
-                            socket.close();
+                            if (!socket.isClosed()) {
+                                socket.close();
+                            }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
-                }).start();
+                });
             }
-        } catch (IOException e) {
+        } catch (
+                IOException e) {
             e.printStackTrace();
         }
+
     }
 
     private HashMap<String, Integer> parseLine(String line) {
