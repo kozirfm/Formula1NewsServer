@@ -27,9 +27,9 @@ public class ParserSportsRu {
             articles.forEach(article -> {
                 if (!article.getText().startsWith("Sports.ru")) {
                     db.addToDb(article);
-                    System.out.println("Articles added: " + articles.size());
                 }
             });
+            System.out.println("Articles added: " + articles.size());
         } else {
             System.out.println("New articles is not found");
         }
@@ -67,10 +67,21 @@ public class ParserSportsRu {
     }
 
     private void getNewArticlesLink() {
-        List<String> titles = db.getTitleFromDb(newsTitle.size());
-        newsTitle.forEach(title -> {
-            if (!titles.contains(title)) {
-                parseNewsTextFromLink(newsLink.get(newsTitle.indexOf(title)));
+        ArrayList<String> newLinks = new ArrayList<>();
+        newsLink.forEach(link -> {
+            if (!newLinks.contains(link)) {
+                newLinks.add(link);
+            } else {
+                int i = newLinks.size();
+                newsTitle.remove(i);
+                newsDate.remove(i);
+                newsLink.remove(i);
+            }
+        });
+        List<String> links = db.getLinkFromDb(newsLink.size());
+        newsLink.forEach(link -> {
+            if (!links.contains(link)) {
+                parseNewsTextFromLink(link);
             }
         });
     }

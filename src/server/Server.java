@@ -27,36 +27,40 @@ public class Server {
             ExecutorService fixedThreadPool = Executors.newFixedThreadPool(5);
             while (true) {
                 Socket socket = server.accept();
+                socket.setSoTimeout(5000);
                 fixedThreadPool.execute(() -> {
-                    try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-                        String line = bufferedReader.readLine();
-                        if (line != null) {
-                            if (line.startsWith("GET")) {
-                                HashMap<String, Integer> values = parseLine(line);
-                                if (values.containsKey("count")) {
-                                    try (OutputStream outputStream = socket.getOutputStream()) {
-                                        Db db = new Db();
-                                        db.connect();
-                                        List<Article> articles = db.getArticlesFromDb(values.get("count"));
-                                        db.disconnect();
-                                        Gson gson = new Gson();
-                                        String page = HEADER + gson.toJson(articles);
-                                        outputStream.write(page.getBytes());
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
+                    if (!socket.isClosed()) {
+                        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                            String line = bufferedReader.readLine();
+                            if (line != null) {
+                                if (line.startsWith("GET")) {
+                                    HashMap<String, Integer> values = parseLine(line);
+                                    if (values.containsKey("count")) {
+                                        try (OutputStream outputStream = socket.getOutputStream()) {
+                                            Db db = new Db();
+                                            db.connect();
+                                            List<Article> articles = db.getArticlesFromDb(values.get("count"));
+                                            db.disconnect();
+                                            Gson gson = new Gson();
+                                            String page = HEADER + gson.toJson(articles);
+                                            outputStream.write(page.getBytes());
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        try {
-                            if (!socket.isClosed()) {
-                                socket.close();
-                            }
                         } catch (IOException e) {
                             e.printStackTrace();
+                            System.err.println("Remote Socket Address: " + socket.getRemoteSocketAddress());
+                        } finally {
+                            try {
+                                if (!socket.isClosed()) {
+                                    socket.close();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 });

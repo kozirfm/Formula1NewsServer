@@ -62,19 +62,19 @@ public class Db {
         return articles;
     }
 
-    public List<String> getTitleFromDb(int count) {
-        List<String> titles = new ArrayList<>();
-        String query = String.format("SELECT title FROM articles ORDER BY id DESC LIMIT %d", count);
+    public List<String> getLinkFromDb(int count) {
+        List<String> links = new ArrayList<>();
+        String query = String.format("SELECT link FROM articles ORDER BY id DESC LIMIT %d", count);
         try {
             ResultSet resultSet = statement.executeQuery(query);
             while (resultSet.next()) {
-                titles.add(resultSet.getString("title"));
+                links.add(resultSet.getString("link"));
             }
             resultSet.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return titles;
+        return links;
     }
 
 }
