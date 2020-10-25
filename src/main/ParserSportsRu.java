@@ -26,7 +26,7 @@ public class ParserSportsRu {
         if (articles.size() != 0) {
             articles.forEach(article -> {
                 if (!article.getText().startsWith("Sports.ru")) {
-                    if (!article.getTitle().startsWith("Гран-при")){
+                    if (!article.getTitle().startsWith("Гран-при")) {
                         db.addToDb(article);
                     }
                 }
@@ -52,7 +52,8 @@ public class ParserSportsRu {
                     newsDate.addAll(changeListDate(date));
                 }
             }));
-            getNewArticlesLink();
+            searchSameArticlesInParsedArrays();
+            alignmentAllArray(compareLinksArrayToLinksDb());
 
             changeToObject(newsDate, newsTitle, newsLink, newsText);
         } catch (IOException e) {
@@ -60,6 +61,7 @@ public class ParserSportsRu {
         }
     }
 
+    //Изменяет список с датой
     private List<String> changeListDate(List<String> list) {
         String day = list.get(0);
         List<String> newDateList = new ArrayList<>();
@@ -69,31 +71,40 @@ public class ParserSportsRu {
         return newDateList;
     }
 
-    private void getNewArticlesLink() {
-        List<String> temporaryLinks = new ArrayList<>();
-        List<String> links = db.getLinkFromDb(newsLink.size());
-
+    //Ищет одинаковые статьи в полученных с сайта данных и удаляет их
+    private void searchSameArticlesInParsedArrays() {
+        List<String> links = new ArrayList<>();
         newsLink.forEach(link -> {
-            if (!temporaryLinks.contains(link)) {
-                temporaryLinks.add(link);
+            if (!links.contains(link)) {
+                links.add(link);
             } else {
-                int i = temporaryLinks.size();
+                int i = links.size();
                 newsTitle.remove(i);
                 newsDate.remove(i);
                 newsLink.remove(i);
             }
         });
+    }
 
+    //Сравнивает полученные с сайта статьи со списком статей из базы данных и возвращает номера новых статей в списках
+    private List<Integer> compareLinksArrayToLinksDb() {
+        List<String> articlesLinksFromDb = db.getLinkFromDb(newsLink.size());
         List<Integer> index = new ArrayList<>();
         newsLink.forEach(link -> {
-            if (!links.contains(link)) {
+            if (!articlesLinksFromDb.contains(link)) {
                 index.add(newsLink.indexOf(link));
                 parseNewsTextFromLink(link);
             }
         });
 
+        return index;
+    }
+
+    //Получает список номеров новых статей, чистит коллекции и заполняет коллекции новыми статьями
+    private void alignmentAllArray(List<Integer> index) {
         List<String> temporaryTitles = new ArrayList<>(newsTitle);
         List<String> temporaryDates = new ArrayList<>(newsDate);
+        List<String> temporaryLinks = new ArrayList<>(newsLink);
 
         newsTitle.clear();
         newsDate.clear();
@@ -106,6 +117,7 @@ public class ParserSportsRu {
         });
     }
 
+    //Получает ссылки на новые статьи и заполняет коллекцию текстами статей
     private void parseNewsTextFromLink(String link) {
         try {
             Document document = Jsoup.connect(link).get();
@@ -119,6 +131,7 @@ public class ParserSportsRu {
         }
     }
 
+    //Получает списки частей статьи и создает экземпляры конкретных статей
     private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text) {
         for (int i = 0; i < text.size(); i++) {
             articles.add(new Article(
