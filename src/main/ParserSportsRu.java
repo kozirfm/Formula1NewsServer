@@ -26,7 +26,9 @@ public class ParserSportsRu {
         if (articles.size() != 0) {
             articles.forEach(article -> {
                 if (!article.getText().startsWith("Sports.ru")) {
-                    db.addToDb(article);
+                    if (!article.getTitle().startsWith("Гран-при")){
+                        db.addToDb(article);
+                    }
                 }
             });
             System.out.println("Articles added: " + articles.size());
@@ -51,7 +53,8 @@ public class ParserSportsRu {
                 }
             }));
             getNewArticlesLink();
-            changeToObject(newsDate, newsTitle, newsLink, newsText, newsText.size());
+
+            changeToObject(newsDate, newsTitle, newsLink, newsText);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -67,22 +70,39 @@ public class ParserSportsRu {
     }
 
     private void getNewArticlesLink() {
-        ArrayList<String> newLinks = new ArrayList<>();
+        List<String> temporaryLinks = new ArrayList<>();
+        List<String> links = db.getLinkFromDb(newsLink.size());
+
         newsLink.forEach(link -> {
-            if (!newLinks.contains(link)) {
-                newLinks.add(link);
+            if (!temporaryLinks.contains(link)) {
+                temporaryLinks.add(link);
             } else {
-                int i = newLinks.size();
+                int i = temporaryLinks.size();
                 newsTitle.remove(i);
                 newsDate.remove(i);
                 newsLink.remove(i);
             }
         });
-        List<String> links = db.getLinkFromDb(newsLink.size());
+
+        List<Integer> index = new ArrayList<>();
         newsLink.forEach(link -> {
             if (!links.contains(link)) {
+                index.add(newsLink.indexOf(link));
                 parseNewsTextFromLink(link);
             }
+        });
+
+        List<String> temporaryTitles = new ArrayList<>(newsTitle);
+        List<String> temporaryDates = new ArrayList<>(newsDate);
+
+        newsTitle.clear();
+        newsDate.clear();
+        newsLink.clear();
+
+        index.forEach(i -> {
+            newsTitle.add(temporaryTitles.get(i));
+            newsDate.add(temporaryDates.get(i));
+            newsLink.add(temporaryLinks.get(i));
         });
     }
 
@@ -99,8 +119,8 @@ public class ParserSportsRu {
         }
     }
 
-    private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text, int newArticlesCount) {
-        for (int i = 0; i < newArticlesCount; i++) {
+    private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text) {
+        for (int i = 0; i < text.size(); i++) {
             articles.add(new Article(
                     date.get(i),
                     title.get(i),
