@@ -4,6 +4,7 @@ import data.Article;
 import database.Db;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
@@ -122,9 +123,23 @@ public class ParserSportsRu {
         try {
             Document document = Jsoup.connect(link).get();
             Elements elements = document.body().getElementsByClass("news-item__content js-mediator-article");
+            StringBuilder articleText = new StringBuilder();
             elements.forEach(element -> {
-                element.select("strong").remove();
-                newsText.add(element.text());
+                List<String> text = element.select("p").eachText();
+                Elements paragraph = element.select("p");
+                int paragraphSizeWithoutLastThree = paragraph.size() - 3;
+                for (int i = 0; i < paragraphSizeWithoutLastThree; i++) {
+                    articleText.append("\n").append(text.get(i)).append("\n");
+                }
+                for (int i = paragraphSizeWithoutLastThree; i < paragraph.size(); i++) {
+                    Element firstElement = paragraph.get(i).children().first();
+                    if (firstElement != null) {
+                        if (!firstElement.is("strong")) {
+                            articleText.append("\n").append(text.get(i)).append("\n");
+                        }
+                    }
+                }
+                newsText.add(articleText.toString());
             });
         } catch (IOException e) {
             e.printStackTrace();
