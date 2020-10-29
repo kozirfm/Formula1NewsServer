@@ -1,14 +1,15 @@
 package server;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import data.Article;
+import data.User;
 import database.Db;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -30,18 +31,32 @@ public class Server {
                 socket.setSoTimeout(5000);
                 fixedThreadPool.execute(() -> {
                     if (!socket.isClosed()) {
-                        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-                            String line = bufferedReader.readLine();
-                            if (line != null) {
-                                if (line.startsWith("GET")) {
-                                    HashMap<String, Integer> values = parseLine(line);
+                        try (BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream())) {
+                            byte[] b = new byte[1024];
+                            if (bufferedInputStream.read(b) > -1) {
+                                String inputStreamLine = new String(b).trim();
+                                String[] line = inputStreamLine.split("\n");
+
+                                if (inputStreamLine.startsWith("POST")) {
+                                    String json = line[line.length - 1];
+                                    User user = new Gson().fromJson(json, User.class);
+                                    Db db = new Db();
+                                    db.connect();
+                                    if (!db.isContainsUsernameOrEmail(user.getUsername(), user.getEmail())) {
+                                        db.addNewUserToDb(user);
+                                    }
+                                    db.disconnect();
+                                }
+
+                                if (inputStreamLine.startsWith("GET")) {
+                                    HashMap<String, Integer> values = parseGetLine(line[0]);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
                                             Db db = new Db();
                                             db.connect();
                                             List<Article> articles = db.getArticlesFromDb(values.get("count"));
                                             db.disconnect();
-                                            Gson gson = new Gson();
+                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
                                             String page = HEADER + gson.toJson(articles);
                                             outputStream.write(page.getBytes());
                                         } catch (IOException e) {
@@ -72,7 +87,7 @@ public class Server {
 
     }
 
-    private HashMap<String, Integer> parseLine(String line) {
+    private HashMap<String, Integer> parseGetLine(String line) {
         HashMap<String, Integer> values = new HashMap<>();
         String[] headerString = line.split(" ");
         String requestString = headerString[1];

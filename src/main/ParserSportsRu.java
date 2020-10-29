@@ -4,7 +4,6 @@ import data.Article;
 import database.Db;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
@@ -28,7 +27,7 @@ public class ParserSportsRu {
             articles.forEach(article -> {
                 if (!article.getText().startsWith("Sports.ru")) {
                     if (!article.getTitle().startsWith("Гран-при")) {
-                        db.addToDb(article);
+                        db.addArticleToDb(article);
                     }
                 }
             });
@@ -89,7 +88,7 @@ public class ParserSportsRu {
 
     //Сравнивает полученные с сайта статьи со списком статей из базы данных и возвращает номера новых статей в списках
     private List<Integer> compareLinksArrayToLinksDb() {
-        List<String> articlesLinksFromDb = db.getLinkFromDb(newsLink.size());
+        List<String> articlesLinksFromDb = db.getLinksFromDb(newsLink.size());
         List<Integer> index = new ArrayList<>();
         newsLink.forEach(link -> {
             if (!articlesLinksFromDb.contains(link)) {
@@ -125,18 +124,16 @@ public class ParserSportsRu {
             Elements elements = document.body().getElementsByClass("news-item__content js-mediator-article");
             StringBuilder articleText = new StringBuilder();
             elements.forEach(element -> {
-                List<String> text = element.select("p").eachText();
                 Elements paragraph = element.select("p");
+                List<String> text = paragraph.eachText();
                 int paragraphSizeWithoutLastThree = paragraph.size() - 3;
                 for (int i = 0; i < paragraphSizeWithoutLastThree; i++) {
                     articleText.append("\n").append(text.get(i)).append("\n");
                 }
                 for (int i = paragraphSizeWithoutLastThree; i < paragraph.size(); i++) {
-                    Element firstElement = paragraph.get(i).children().first();
-                    if (firstElement != null) {
-                        if (!firstElement.is("strong")) {
-                            articleText.append("\n").append(text.get(i)).append("\n");
-                        }
+                    Elements elementsWithStrong = paragraph.get(i).select("strong");
+                    if (elementsWithStrong.isEmpty()) {
+                        articleText.append("\n").append(text.get(i)).append("\n");
                     }
                 }
                 newsText.add(articleText.toString());
