@@ -1,6 +1,7 @@
 package database;
 
 import data.Article;
+import data.Driver;
 import data.User;
 
 import java.sql.*;
@@ -17,7 +18,6 @@ public class Db {
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:Formula1News.db");
             statement = connection.createStatement();
-            System.out.println("DataBase connect");
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -27,13 +27,12 @@ public class Db {
         try {
             statement.close();
             connection.close();
-            System.out.println("DataBase disconnect");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void addArticleToDb(Article article) {
+    public void addArticles(Article article) {
         String query = String.format("INSERT INTO articles (date, title, link, text) VALUES ('%s','%s','%s','%s')",
                 article.getDate(), article.getTitle(), article.getLink(), article.getText());
         try {
@@ -102,4 +101,33 @@ public class Db {
         return false;
     }
 
+    public void updateDriversPositionTable(List<Driver> drivers) {
+        drivers.forEach(driver -> {
+            try {
+                String query = String.format("INSERT or REPLACE INTO drivers VALUES ('%d', '%s', '%s', '%s', '%d')",
+                        driver.getPosition(), driver.getName(), driver.getSurname(), driver.getTeam(), driver.getPoints());
+                statement.executeUpdate(query);
+            } catch (SQLException t) {
+                t.printStackTrace();
+            }
+        });
+    }
+
+    public List<Driver> getDriversChampionshipTable() {
+        List<Driver> drivers = new ArrayList<>();
+        try {
+            String query = "SELECT * FROM drivers";
+            ResultSet resultSet = statement.executeQuery(query);
+            while (resultSet.next()) {
+                drivers.add(new Driver(resultSet.getInt("position"),
+                        resultSet.getString("name"),
+                        resultSet.getString("surname"),
+                        resultSet.getString("team"),
+                        resultSet.getInt("points")));
+            }
+        } catch (SQLException t) {
+            t.printStackTrace();
+        }
+        return drivers;
+    }
 }

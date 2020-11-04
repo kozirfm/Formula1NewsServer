@@ -3,6 +3,7 @@ package server;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import data.Article;
+import data.Driver;
 import data.User;
 import database.Db;
 
@@ -49,7 +50,9 @@ public class Server {
                                 }
 
                                 if (inputStreamLine.startsWith("GET")) {
-                                    HashMap<String, Integer> values = parseGetLine(line[0]);
+                                    String[] headerString = line[0].split(" ");
+                                    String requestString = headerString[1];
+                                    HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
                                             Db db = new Db();
@@ -61,6 +64,17 @@ public class Server {
                                             outputStream.write(page.getBytes());
                                         } catch (IOException e) {
                                             e.printStackTrace();
+                                        }
+                                    }
+                                    if (parseSimpleString(requestString).contains("championship")){
+                                        try(OutputStream outputStream = socket.getOutputStream()){
+                                            Db db = new Db();
+                                            db.connect();
+                                            List<Driver> drivers = db.getDriversChampionshipTable();
+                                            db.disconnect();
+                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+                                            String page = HEADER + gson.toJson(drivers);
+                                            outputStream.write(page.getBytes());
                                         }
                                     }
                                 }
@@ -87,10 +101,13 @@ public class Server {
 
     }
 
-    private HashMap<String, Integer> parseGetLine(String line) {
+    private String parseSimpleString(String requestString){
+        String[] s = requestString.split("/");
+        return s[1];
+    }
+
+    private HashMap<String, Integer> parseGetLineWithKeyValue(String requestString) {
         HashMap<String, Integer> values = new HashMap<>();
-        String[] headerString = line.split(" ");
-        String requestString = headerString[1];
         String[] questionMark = requestString.split("\\?");
         if (questionMark.length == 2) {
             String afterQuestionMarkString = questionMark[1];

@@ -1,46 +1,28 @@
-package main;
+package model;
 
 import data.Article;
 import database.Db;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.*;
 
-public class ParserSportsRu {
+public class ParseArticle {
 
-    Db db = new Db();
-
+    private final Db db = new Db();
     private final List<String> newsDate = new ArrayList<>();
     private final List<String> newsTitle = new ArrayList<>();
     private final List<String> newsLink = new ArrayList<>();
     private final List<String> newsText = new ArrayList<>();
-    private final List<Article> articles = new ArrayList<>();
-
-    public void start() {
-        System.out.println("Start session: " + new Date().toString());
-        db.connect();
-        parse();
-        if (articles.size() != 0) {
-            articles.forEach(article -> {
-                if (!article.getText().startsWith("Sports.ru")) {
-                    if (!article.getTitle().startsWith("Гран-при")) {
-                        db.addArticleToDb(article);
-                    }
-                }
-            });
-            System.out.println("Articles added: " + articles.size());
-        } else {
-            System.out.println("New articles is not found");
-        }
-        db.disconnect();
-        System.out.println("End session: " + new Date().toString());
-    }
+    final List<Article> articles = new ArrayList<>();
 
     public void parse() {
         try {
+            System.out.println("Start session: " + new Date().toString());
+            db.connect();
             Document doc = Jsoup.connect("https://www.sports.ru/f1-championship/").get();
             Elements elements = doc.getElementsByClass("nl-item");
             elements.forEach(element -> element.select("a").eachText().forEach(s -> {
@@ -54,10 +36,13 @@ public class ParserSportsRu {
             }));
             searchSameArticlesInParsedArrays();
             alignmentAllArray(compareLinksArrayToLinksDb());
-
             changeToObject(newsDate, newsTitle, newsLink, newsText);
+            addArticlesToDb(articles);
+            System.out.println("End session: " + new Date().toString());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            db.disconnect();
         }
     }
 
@@ -124,19 +109,30 @@ public class ParserSportsRu {
             Elements elements = document.body().getElementsByClass("news-item__content js-mediator-article");
             StringBuilder articleText = new StringBuilder();
             elements.forEach(element -> {
+                List<Element> paragraphWithText = new ArrayList<>();
                 Elements paragraph = element.select("p");
+                paragraph.forEach(p -> {
+                    if (p.hasText()) {
+                        paragraphWithText.add(p);
+                    }
+                });
                 List<String> text = paragraph.eachText();
-                int paragraphSizeWithoutLastThree = paragraph.size() - 3;
-                for (int i = 0; i < paragraphSizeWithoutLastThree; i++) {
-                    articleText.append("\n").append(text.get(i)).append("\n");
-                }
-                for (int i = paragraphSizeWithoutLastThree; i < paragraph.size(); i++) {
-                    Elements elementsWithStrong = paragraph.get(i).select("strong");
-                    if (elementsWithStrong.isEmpty()) {
+                if (text.size() > 2) {
+                    int textSizeWithoutLastThree = text.size() - 3;
+                    for (int i = 0; i < textSizeWithoutLastThree; i++) {
                         articleText.append("\n").append(text.get(i)).append("\n");
                     }
+                    for (int i = textSizeWithoutLastThree; i < text.size(); i++) {
+                        Elements elementsWithStrong = paragraphWithText.get(i).select("strong");
+                        if (elementsWithStrong.isEmpty()) {
+                            articleText.append("\n").append(text.get(i)).append("\n");
+                        }
+                    }
+                } else {
+                    articleText.append("Гран-при");
                 }
                 newsText.add(articleText.toString());
+
             });
         } catch (IOException e) {
             e.printStackTrace();
@@ -153,6 +149,22 @@ public class ParserSportsRu {
                     text.get(i)));
         }
         Collections.reverse(articles);
+    }
+
+    //Добавление статей в базу данных
+    private void addArticlesToDb(List<Article> articles) {
+        if (articles.size() != 0) {
+            articles.forEach(article -> {
+                if (!article.getText().startsWith("Sports.ru")) {
+                    if (!article.getTitle().startsWith("Гран-при")) {
+                        db.addArticles(article);
+                    }
+                }
+            });
+            System.out.println("Articles added: " + articles.size());
+        } else {
+            System.out.println("New articles is not found");
+        }
     }
 
 }
