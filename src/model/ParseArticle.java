@@ -8,7 +8,10 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 
 public class ParseArticle {
 
@@ -17,7 +20,7 @@ public class ParseArticle {
     private final List<String> newsTitle = new ArrayList<>();
     private final List<String> newsLink = new ArrayList<>();
     private final List<String> newsText = new ArrayList<>();
-    final List<Article> articles = new ArrayList<>();
+    private final List<Article> articles = new ArrayList<>();
 
     public void parse() {
         try {
@@ -34,7 +37,6 @@ public class ParseArticle {
                     newsDate.addAll(changeListDate(date));
                 }
             }));
-            searchSameArticlesInParsedArrays();
             alignmentAllArray(compareLinksArrayToLinksDb());
             changeToObject(newsDate, newsTitle, newsLink, newsText);
             addArticlesToDb(articles);
@@ -56,32 +58,19 @@ public class ParseArticle {
         return newDateList;
     }
 
-    //Ищет одинаковые статьи в полученных с сайта данных и удаляет их
-    private void searchSameArticlesInParsedArrays() {
-        List<String> links = new ArrayList<>();
-        newsLink.forEach(link -> {
-            if (!links.contains(link)) {
-                links.add(link);
-            } else {
-                int i = links.size();
-                newsTitle.remove(i);
-                newsDate.remove(i);
-                newsLink.remove(i);
-            }
-        });
-    }
-
     //Сравнивает полученные с сайта статьи со списком статей из базы данных и возвращает номера новых статей в списках
     private List<Integer> compareLinksArrayToLinksDb() {
         List<String> articlesLinksFromDb = db.getLinksFromDb(newsLink.size());
         List<Integer> index = new ArrayList<>();
-        newsLink.forEach(link -> {
-            if (!articlesLinksFromDb.contains(link)) {
-                index.add(newsLink.indexOf(link));
-                parseNewsTextFromLink(link);
-            }
-        });
-
+        if (articlesLinksFromDb.size() > 0) {
+            System.out.println("Compare links array to links db before: " + articlesLinksFromDb.size());
+            newsLink.forEach(link -> {
+                if (!articlesLinksFromDb.contains(link)) {
+                    index.add(newsLink.indexOf(link));
+                }
+            });
+            System.out.println("Compare links array to links db after: " + index.size() + " " + index);
+        }
         return index;
     }
 
@@ -94,12 +83,17 @@ public class ParseArticle {
         newsTitle.clear();
         newsDate.clear();
         newsLink.clear();
+        newsText.clear();
+        articles.clear();
 
         index.forEach(i -> {
             newsTitle.add(temporaryTitles.get(i));
             newsDate.add(temporaryDates.get(i));
             newsLink.add(temporaryLinks.get(i));
         });
+        System.out.println(newsLink);
+        newsLink.forEach(this::parseNewsTextFromLink);
+
     }
 
     //Получает ссылки на новые статьи и заполняет коллекцию текстами статей
@@ -131,9 +125,8 @@ public class ParseArticle {
                 } else {
                     articleText.append("Гран-при");
                 }
-                newsText.add(articleText.toString());
-
             });
+            newsText.add(articleText.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -141,14 +134,20 @@ public class ParseArticle {
 
     //Получает списки частей статьи и создает экземпляры конкретных статей
     private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text) {
-        for (int i = 0; i < text.size(); i++) {
-            articles.add(new Article(
-                    date.get(i),
-                    title.get(i),
-                    link.get(i),
-                    text.get(i)));
+        System.out.println("Change to object size: " + date.size() + " " + title.size() + " " + link.size() + " " + text.size());
+        if (date.size() > 0) {
+            for (String s : title) {
+                if (!s.startsWith("Гран-при")) {
+                    int i = title.indexOf(s);
+                    articles.add(new Article(
+                            date.get(i),
+                            title.get(i),
+                            link.get(i),
+                            text.get(i)));
+                }
+            }
+            Collections.reverse(articles);
         }
-        Collections.reverse(articles);
     }
 
     //Добавление статей в базу данных

@@ -24,13 +24,13 @@ public class Article {
     @Expose
     private long id;
     @Expose
-    private String date;
+    private final String date;
     @Expose
-    private String title;
+    private final String title;
     @Expose
-    private String link;
+    private final String link;
     @Expose
-    private String text;
+    private final String text;
 
     public long getId() {
         return id;

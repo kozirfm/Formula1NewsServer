@@ -4,13 +4,17 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import data.Article;
 import data.Driver;
-import data.User;
+import data.Team;
 import database.Db;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,6 +25,8 @@ public class Server {
                     "Server: MyServer\n" +
                     "Content-Type: application/json; charset=utf-8\n" +
                     "Connection: close\n\n";
+
+    private final Db db = new Db();
 
     public void start() {
 
@@ -38,16 +44,16 @@ public class Server {
                                 String inputStreamLine = new String(b).trim();
                                 String[] line = inputStreamLine.split("\n");
 
-                                if (inputStreamLine.startsWith("POST")) {
-                                    String json = line[line.length - 1];
-                                    User user = new Gson().fromJson(json, User.class);
-                                    Db db = new Db();
-                                    db.connect();
-                                    if (!db.isContainsUsernameOrEmail(user.getUsername(), user.getEmail())) {
-                                        db.addNewUserToDb(user);
-                                    }
-                                    db.disconnect();
-                                }
+//                                if (inputStreamLine.startsWith("POST")) {
+//                                    String json = line[line.length - 1];
+//                                    User user = new Gson().fromJson(json, User.class);
+//                                    Db db = new Db();
+//                                    db.connect();
+//                                    if (!db.isContainsUsernameOrEmail(user.getUsername(), user.getEmail())) {
+//                                        db.addNewUserToDb(user);
+//                                    }
+//                                    db.disconnect();
+//                                }
 
                                 if (inputStreamLine.startsWith("GET")) {
                                     String[] headerString = line[0].split(" ");
@@ -55,7 +61,7 @@ public class Server {
                                     HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-                                            Db db = new Db();
+
                                             db.connect();
                                             List<Article> articles = db.getArticlesFromDb(values.get("count"));
                                             db.disconnect();
@@ -66,14 +72,12 @@ public class Server {
                                             e.printStackTrace();
                                         }
                                     }
-                                    if (parseSimpleString(requestString).contains("championship")){
-                                        try(OutputStream outputStream = socket.getOutputStream()){
-                                            Db db = new Db();
+                                    if (parseSimpleString(requestString).contains("championship")) {
+                                        try (OutputStream outputStream = socket.getOutputStream()) {
                                             db.connect();
                                             List<Driver> drivers = db.getDriversChampionshipTable();
-                                            db.disconnect();
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(drivers);
+                                            String page = HEADER + gson.toJson(makeTeamFromDrivers(drivers));
                                             outputStream.write(page.getBytes());
                                         }
                                     }
@@ -83,6 +87,7 @@ public class Server {
                             e.printStackTrace();
                             System.err.println("Remote Socket Address: " + socket.getRemoteSocketAddress());
                         } finally {
+                            db.disconnect();
                             try {
                                 if (!socket.isClosed()) {
                                     socket.close();
@@ -101,9 +106,9 @@ public class Server {
 
     }
 
-    private String parseSimpleString(String requestString){
+    private String parseSimpleString(String requestString) {
         String[] s = requestString.split("/");
-        return s[1];
+        return s.length > 1 ? s[1] : "";
     }
 
     private HashMap<String, Integer> parseGetLineWithKeyValue(String requestString) {
@@ -123,4 +128,25 @@ public class Server {
         }
         return values;
     }
+
+    private List<Team> makeTeamFromDrivers(List<Driver> drivers) {
+        List<Team> teams = new ArrayList<>();
+        List<String> teamsName = new ArrayList<>();
+        drivers.forEach(driver -> {
+            if (!teamsName.contains(driver.getTeam())) {
+                teamsName.add(driver.getTeam());
+                teams.add(new Team(driver.getTeam()));
+            }
+        });
+
+        drivers.forEach(driver -> {
+            for (Team team : teams) {
+                if (team.getName().equals(driver.getTeam())) {
+                    team.getDrivers().add(driver);
+                }
+            }
+        });
+        return teams;
+    }
+
 }

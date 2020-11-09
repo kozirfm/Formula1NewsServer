@@ -6,10 +6,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ParseChampionship {
 
@@ -19,14 +20,15 @@ public class ParseChampionship {
     public void parse() {
         try {
             db.connect();
-            Document doc = Jsoup.connect("https://www.sports.ru/f1-championship/table/").get();
+            URL url = new URL("https://www.sports.ru/f1-championship/table/");
+            Document doc = Jsoup.parse(url, (int) TimeUnit.SECONDS.toMillis(30));
             Elements elements = doc.getElementsByTag("tbody");
             Elements driversElements = elements.get(1).select("tr");
             driversElements.forEach(driver -> addDriver(driver.text()));
             db.updateDriversPositionTable(drivers);
         } catch (IOException e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             db.disconnect();
         }
     }
