@@ -155,9 +155,7 @@ public class ParseArticle {
         if (articles.size() != 0) {
             articles.forEach(article -> {
                 if (!article.getText().startsWith("Sports.ru")) {
-                    if (!article.getTitle().startsWith("Гран-при")) {
-                        db.addArticles(article);
-                    }
+                    db.addArticles(article);
                 }
             });
             System.out.println("Articles added: " + articles.size());

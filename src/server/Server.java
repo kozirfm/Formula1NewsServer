@@ -61,10 +61,8 @@ public class Server {
                                     HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-
                                             db.connect();
                                             List<Article> articles = db.getArticlesFromDb(values.get("count"));
-                                            db.disconnect();
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
                                             String page = HEADER + gson.toJson(articles);
                                             outputStream.write(page.getBytes());
