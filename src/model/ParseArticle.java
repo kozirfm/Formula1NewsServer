@@ -19,7 +19,6 @@ public class ParseArticle {
     private final List<String> newsDate = new ArrayList<>();
     private final List<String> newsTitle = new ArrayList<>();
     private final List<String> newsLink = new ArrayList<>();
-    private final List<String> newsText = new ArrayList<>();
     private final List<Article> articles = new ArrayList<>();
 
     public void parse() {
@@ -38,8 +37,10 @@ public class ParseArticle {
                 }
             }));
             alignmentAllArray(compareLinksArrayToLinksDb());
-            changeToObject(newsDate, newsTitle, newsLink, newsText);
+            Collections.reverse(articles);
             addArticlesToDb(articles);
+            clearAllArrays();
+            System.out.println(db.getArticlesFromDbForPage(1));
             System.out.println("End session: " + new Date().toString());
         } catch (IOException e) {
             e.printStackTrace();
@@ -60,54 +61,42 @@ public class ParseArticle {
 
     //Сравнивает полученные с сайта статьи со списком статей из базы данных и возвращает номера новых статей в списках
     private List<Integer> compareLinksArrayToLinksDb() {
-        List<String> articlesLinksFromDb = db.getLinksFromDb(newsLink.size());
+        List<String> articlesLinksFromDb = db.getLinksFromDb(newsLink.size() * 2);
         List<Integer> index = new ArrayList<>();
         if (articlesLinksFromDb.size() > 0) {
-            System.out.println("Compare links array to links db before: " + articlesLinksFromDb.size());
             newsLink.forEach(link -> {
                 if (!articlesLinksFromDb.contains(link)) {
                     index.add(newsLink.indexOf(link));
                 }
             });
-            System.out.println("Compare links array to links db after: " + index.size() + " " + index);
         }
         return index;
     }
 
-    //Получает список номеров новых статей, чистит коллекции и заполняет коллекции новыми статьями
+    //Создает объекты без текста
     private void alignmentAllArray(List<Integer> index) {
-        List<String> temporaryTitles = new ArrayList<>(newsTitle);
-        List<String> temporaryDates = new ArrayList<>(newsDate);
-        List<String> temporaryLinks = new ArrayList<>(newsLink);
-
-        newsTitle.clear();
-        newsDate.clear();
-        newsLink.clear();
-        newsText.clear();
-        articles.clear();
-
-        index.forEach(i -> {
-            newsTitle.add(temporaryTitles.get(i));
-            newsDate.add(temporaryDates.get(i));
-            newsLink.add(temporaryLinks.get(i));
-        });
-        System.out.println(newsLink);
-        newsLink.forEach(this::parseNewsTextFromLink);
-
+        for (Integer i : index) {
+            articles.add(new Article(newsDate.get(i), newsTitle.get(i), newsLink.get(i), null));
+        }
+        articles.forEach(this::parseNewsTextFromLink);
     }
 
-    //Получает ссылки на новые статьи и заполняет коллекцию текстами статей
-    private void parseNewsTextFromLink(String link) {
+    //Получает ссылки на новые статьи, дополняет объекты текстами статей и фотографиями
+    private void parseNewsTextFromLink(Article article) {
+        StringBuilder articleText = new StringBuilder();
+        List<String> images = new ArrayList<>();
         try {
-            Document document = Jsoup.connect(link).get();
+            Document document = Jsoup.connect(article.getLink()).get();
             Elements elements = document.body().getElementsByClass("news-item__content js-mediator-article");
-            StringBuilder articleText = new StringBuilder();
             elements.forEach(element -> {
                 List<Element> paragraphWithText = new ArrayList<>();
                 Elements paragraph = element.select("p");
                 paragraph.forEach(p -> {
                     if (p.hasText()) {
                         paragraphWithText.add(p);
+                    }
+                    if (!p.select("img").attr("src").isEmpty()) {
+                        images.add(p.select("img").attr("src"));
                     }
                 });
                 List<String> text = paragraph.eachText();
@@ -126,42 +115,40 @@ public class ParseArticle {
                     articleText.append("Гран-при");
                 }
             });
-            newsText.add(articleText.toString());
+            article.setText(articleText.toString());
+            if (!images.isEmpty()) {
+                article.setImages(images);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    //Получает списки частей статьи и создает экземпляры конкретных статей
-    private void changeToObject(List<String> date, List<String> title, List<String> link, List<String> text) {
-        System.out.println("Change to object size: " + date.size() + " " + title.size() + " " + link.size() + " " + text.size());
-        if (date.size() > 0) {
-            for (String s : title) {
-                if (!s.startsWith("Гран-при")) {
-                    int i = title.indexOf(s);
-                    articles.add(new Article(
-                            date.get(i),
-                            title.get(i),
-                            link.get(i),
-                            text.get(i)));
-                }
-            }
-            Collections.reverse(articles);
-        }
-    }
-
     //Добавление статей в базу данных
     private void addArticlesToDb(List<Article> articles) {
+        List<Article> addedArticles = new ArrayList<>();
         if (articles.size() != 0) {
             articles.forEach(article -> {
-                if (!article.getText().startsWith("Sports.ru")) {
-                    db.addArticles(article);
+                if (!article.getText().startsWith("Sports.ru") && article.getText() != null) {
+                    if (article.getImages() == null) {
+                        db.addArticle(article);
+                    } else {
+                        db.addArticleWithImages(article);
+                    }
+                    addedArticles.add(article);
                 }
             });
-            System.out.println("Articles added: " + articles.size());
+            System.out.println("Articles added: " + addedArticles.size());
         } else {
             System.out.println("New articles is not found");
         }
+    }
+
+    private void clearAllArrays() {
+        newsTitle.clear();
+        newsDate.clear();
+        newsLink.clear();
+        articles.clear();
     }
 
 }

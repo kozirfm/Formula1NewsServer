@@ -11,13 +11,14 @@ public class Team {
     public Team(String name) {
         this.drivers = new ArrayList<>();
         this.name = name;
+        this.points = 0;
     }
 
     @Expose
     private List<Driver> drivers;
     @Expose
     private String name;
-
+    @Expose
     private int points;
 
     public List<Driver> getDrivers() {
@@ -37,8 +38,11 @@ public class Team {
     }
 
     public int getPoints() {
-        drivers.forEach(driver -> points += driver.getPoints());
         return points;
+    }
+
+    public void setPoints(int points) {
+        this.points = points;
     }
 
     @Override

@@ -12,9 +12,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -56,13 +54,23 @@ public class Server {
 //                                }
 
                                 if (inputStreamLine.startsWith("GET")) {
+                                    db.connect();
                                     String[] headerString = line[0].split(" ");
                                     String requestString = headerString[1];
                                     HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-                                            db.connect();
                                             List<Article> articles = db.getArticlesFromDb(values.get("count"));
+                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+                                            String page = HEADER + gson.toJson(articles);
+                                            outputStream.write(page.getBytes());
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                    if (values.containsKey("page")) {
+                                        try (OutputStream outputStream = socket.getOutputStream()) {
+                                            List<Article> articles = db.getArticlesFromDbForPage(values.get("page"));
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
                                             String page = HEADER + gson.toJson(articles);
                                             outputStream.write(page.getBytes());
@@ -72,7 +80,6 @@ public class Server {
                                     }
                                     if (parseSimpleString(requestString).contains("championship")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-                                            db.connect();
                                             List<Driver> drivers = db.getDriversChampionshipTable();
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
                                             String page = HEADER + gson.toJson(makeTeamFromDrivers(drivers));
@@ -130,20 +137,23 @@ public class Server {
     private List<Team> makeTeamFromDrivers(List<Driver> drivers) {
         List<Team> teams = new ArrayList<>();
         List<String> teamsName = new ArrayList<>();
+        //Создаем команды
         drivers.forEach(driver -> {
             if (!teamsName.contains(driver.getTeam())) {
                 teamsName.add(driver.getTeam());
                 teams.add(new Team(driver.getTeam()));
             }
         });
-
+        //Добавляем пилотов
         drivers.forEach(driver -> {
             for (Team team : teams) {
                 if (team.getName().equals(driver.getTeam())) {
                     team.getDrivers().add(driver);
+                    team.setPoints(team.getPoints() + driver.getPoints());
                 }
             }
         });
+        teams.sort(Comparator.comparingInt(Team::getPoints).reversed());
         return teams;
     }
 

@@ -2,6 +2,7 @@ package data;
 
 import com.google.gson.annotations.Expose;
 
+import java.util.List;
 import java.util.Objects;
 
 public class Article {
@@ -21,6 +22,15 @@ public class Article {
         this.text = text;
     }
 
+    public Article(long id, String date, String title, String link, String text, Boolean image) {
+        this.id = id;
+        this.date = date;
+        this.title = title;
+        this.link = link;
+        this.text = text;
+        this.image = image;
+    }
+
     @Expose
     private long id;
     @Expose
@@ -30,14 +40,13 @@ public class Article {
     @Expose
     private final String link;
     @Expose
-    private final String text;
+    private String text;
+    private Boolean image;
+    @Expose
+    private List<String> images;
 
     public long getId() {
         return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
     }
 
     public String getDate() {
@@ -56,6 +65,22 @@ public class Article {
         return text;
     }
 
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public List<String> getImages() {
+        return images;
+    }
+
+    public void setImages(List<String> images) {
+        this.images = images;
+    }
+
+    public Boolean hasImage() {
+        return image;
+    }
+
     @Override
     public String toString() {
         return "Article{" +
@@ -64,6 +89,7 @@ public class Article {
                 ", title='" + title + '\'' +
                 ", link='" + link + '\'' +
                 ", text='" + text + '\'' +
+                ", images=" + images +
                 '}';
     }
 
