@@ -40,7 +40,6 @@ public class ParseArticle {
             Collections.reverse(articles);
             addArticlesToDb(articles);
             clearAllArrays();
-            System.out.println(db.getArticlesFromDbForPage(1));
             System.out.println("End session: " + new Date().toString());
         } catch (IOException e) {
             e.printStackTrace();

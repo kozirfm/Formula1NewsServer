@@ -57,7 +57,7 @@ public class Db {
                 article.getImages().forEach(image -> {
                     try {
                         //Добавляет ссылки на картинки в БД
-                        statement.executeUpdate(String.format("INSERT INTO article_images (articles_id, image_link) VALUES ('%d', '%s')", i, image));
+                        statement.executeUpdate(String.format("INSERT INTO article_images (article_id, image_link) VALUES ('%d', '%s')", i, image));
                     } catch (SQLException t) {
                         t.printStackTrace();
                     }
