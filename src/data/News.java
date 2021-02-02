@@ -5,16 +5,16 @@ import com.google.gson.annotations.Expose;
 import java.util.List;
 import java.util.Objects;
 
-public class Article {
+public class News {
 
-    public Article(String date, String title, String link, String text) {
+    public News(String date, String title, String link, String text) {
         this.date = date;
         this.title = title;
         this.link = link;
         this.text = text;
     }
 
-    public Article(long id, String date, String title, String link, String text) {
+    public News(long id, String date, String title, String link, String text) {
         this.id = id;
         this.date = date;
         this.title = title;
@@ -22,7 +22,7 @@ public class Article {
         this.text = text;
     }
 
-    public Article(long id, String date, String title, String link, String text, Boolean image) {
+    public News(long id, String date, String title, String link, String text, Boolean image) {
         this.id = id;
         this.date = date;
         this.title = title;
@@ -34,7 +34,7 @@ public class Article {
     @Expose
     private long id;
     @Expose
-    private final String date;
+    private String date;
     @Expose
     private final String title;
     @Expose
@@ -63,6 +63,10 @@ public class Article {
 
     public String getText() {
         return text;
+    }
+
+    public void setDate(String date) {
+        this.date = date;
     }
 
     public void setText(String text) {
@@ -97,12 +101,12 @@ public class Article {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Article article = (Article) o;
-        return id == article.id &&
-                Objects.equals(date, article.date) &&
-                Objects.equals(title, article.title) &&
-                Objects.equals(link, article.link) &&
-                Objects.equals(text, article.text);
+        News news = (News) o;
+        return id == news.id &&
+                Objects.equals(date, news.date) &&
+                Objects.equals(title, news.title) &&
+                Objects.equals(link, news.link) &&
+                Objects.equals(text, news.text);
     }
 
     @Override

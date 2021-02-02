@@ -12,15 +12,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class ParseChampionship {
+public class ParseChampionship implements Constants {
 
     private final List<Driver> drivers = new ArrayList<>();
-    private final Db db = new Db();
+
+    public ParseChampionship(Db db){
+        this.db = db;
+    }
+
+    private final Db db;
 
     public void parse() {
         try {
-            db.connect();
-            URL url = new URL("https://www.sports.ru/f1-championship/table/");
+
+            URL url = new URL(BASE_URL_SPORTS_RU_CHAMPIONSHIP);
             Document doc = Jsoup.parse(url, (int) TimeUnit.SECONDS.toMillis(30));
             Elements elements = doc.getElementsByTag("tbody");
             Elements driversElements = elements.get(1).select("tr");
@@ -29,7 +34,7 @@ public class ParseChampionship {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            db.disconnect();
+            drivers.clear();
         }
     }
 

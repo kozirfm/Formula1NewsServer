@@ -1,6 +1,6 @@
 package model;
 
-import data.Article;
+import data.News;
 import database.Db;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,19 +13,23 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-public class ParseArticle {
+public class ParseNews implements Constants {
 
-    private final Db db = new Db();
+    public ParseNews(Db db){
+        this.db = db;
+    }
+
+    private final Db db;
+
     private final List<String> newsDate = new ArrayList<>();
     private final List<String> newsTitle = new ArrayList<>();
     private final List<String> newsLink = new ArrayList<>();
-    private final List<Article> articles = new ArrayList<>();
+    private final List<News> news = new ArrayList<>();
 
     public void parse() {
         try {
             System.out.println("Start session: " + new Date().toString());
-            db.connect();
-            Document doc = Jsoup.connect("https://www.sports.ru/f1-championship/").get();
+            Document doc = Jsoup.connect(BASE_URL_SPORTS_RU_NEWS).get();
             Elements elements = doc.getElementsByClass("nl-item");
             elements.forEach(element -> element.select("a").eachText().forEach(s -> {
                 if (s.equals("Sports.ru")) {
@@ -37,14 +41,13 @@ public class ParseArticle {
                 }
             }));
             alignmentAllArray(compareLinksArrayToLinksDb());
-            Collections.reverse(articles);
-            addArticlesToDb(articles);
-            clearAllArrays();
+            Collections.reverse(news);
+            addNewsToDb(news);
             System.out.println("End session: " + new Date().toString());
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            db.disconnect();
+        }finally {
+            clearAllArrays();
         }
     }
 
@@ -75,17 +78,17 @@ public class ParseArticle {
     //Создает объекты без текста
     private void alignmentAllArray(List<Integer> index) {
         for (Integer i : index) {
-            articles.add(new Article(newsDate.get(i), newsTitle.get(i), newsLink.get(i), null));
+            news.add(new News(newsDate.get(i), newsTitle.get(i), newsLink.get(i), null));
         }
-        articles.forEach(this::parseNewsTextFromLink);
+        news.forEach(this::parseNewsTextFromLink);
     }
 
     //Получает ссылки на новые статьи, дополняет объекты текстами статей и фотографиями
-    private void parseNewsTextFromLink(Article article) {
+    private void parseNewsTextFromLink(News news) {
         StringBuilder articleText = new StringBuilder();
         List<String> images = new ArrayList<>();
         try {
-            Document document = Jsoup.connect(article.getLink()).get();
+            Document document = Jsoup.connect(news.getLink()).get();
             Elements elements = document.body().getElementsByClass("news-item__content js-mediator-article");
             elements.forEach(element -> {
                 List<Element> paragraphWithText = new ArrayList<>();
@@ -114,9 +117,9 @@ public class ParseArticle {
                     articleText.append("Гран-при");
                 }
             });
-            article.setText(articleText.toString());
+            news.setText(articleText.toString());
             if (!images.isEmpty()) {
-                article.setImages(images);
+                news.setImages(images);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -124,30 +127,15 @@ public class ParseArticle {
     }
 
     //Добавление статей в базу данных
-    private void addArticlesToDb(List<Article> articles) {
-        List<Article> addedArticles = new ArrayList<>();
-        if (articles.size() != 0) {
-            articles.forEach(article -> {
-                if (!article.getText().startsWith("Sports.ru") && article.getText() != null) {
-                    if (article.getImages() == null) {
-                        db.addArticle(article);
-                    } else {
-                        db.addArticleWithImages(article);
-                    }
-                    addedArticles.add(article);
-                }
-            });
-            System.out.println("Articles added: " + addedArticles.size());
-        } else {
-            System.out.println("New articles is not found");
-        }
+    private void addNewsToDb(List<News> news) {
+        System.out.println("Articles added: " + db.addArticles(news));
     }
 
     private void clearAllArrays() {
         newsTitle.clear();
         newsDate.clear();
         newsLink.clear();
-        articles.clear();
+        news.clear();
     }
 
 }

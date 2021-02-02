@@ -2,8 +2,9 @@ package server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import data.Article;
+import data.News;
 import data.Driver;
+import data.GrandPrix;
 import data.Team;
 import database.Db;
 
@@ -24,7 +25,11 @@ public class Server {
                     "Content-Type: application/json; charset=utf-8\n" +
                     "Connection: close\n\n";
 
-    private final Db db = new Db();
+    public Server(Db db) {
+        this.db = db;
+    }
+
+    private final Db db;
 
     public void start() {
 
@@ -54,15 +59,14 @@ public class Server {
 //                                }
 
                                 if (inputStreamLine.startsWith("GET")) {
-                                    db.connect();
                                     String[] headerString = line[0].split(" ");
                                     String requestString = headerString[1];
                                     HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
                                     if (values.containsKey("count")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<Article> articles = db.getArticlesFromDb(values.get("count"));
+                                            List<News> news = db.getArticlesFromDb(values.get("count"));
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(articles);
+                                            String page = HEADER + gson.toJson(news);
                                             outputStream.write(page.getBytes());
                                         } catch (IOException e) {
                                             e.printStackTrace();
@@ -70,9 +74,9 @@ public class Server {
                                     }
                                     if (values.containsKey("page")) {
                                         try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<Article> articles = db.getArticlesFromDbForPage(values.get("page"));
+                                            List<News> news = db.getArticlesFromDbForPage(values.get("page"));
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(articles);
+                                            String page = HEADER + gson.toJson(news);
                                             outputStream.write(page.getBytes());
                                         } catch (IOException e) {
                                             e.printStackTrace();
@@ -84,6 +88,18 @@ public class Server {
                                             Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
                                             String page = HEADER + gson.toJson(makeTeamFromDrivers(drivers));
                                             outputStream.write(page.getBytes());
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                    if (parseSimpleString(requestString).contains("calendar")) {
+                                        try (OutputStream outputStream = socket.getOutputStream()) {
+                                            List<GrandPrix> grandPrixes = db.getCalendarTable();
+                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+                                            String page = HEADER + gson.toJson(grandPrixes);
+                                            outputStream.write(page.getBytes());
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
                                         }
                                     }
                                 }
@@ -92,7 +108,6 @@ public class Server {
                             e.printStackTrace();
                             System.err.println("Remote Socket Address: " + socket.getRemoteSocketAddress());
                         } finally {
-                            db.disconnect();
                             try {
                                 if (!socket.isClosed()) {
                                     socket.close();
