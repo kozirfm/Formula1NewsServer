@@ -24,7 +24,6 @@ public class ParseChampionship implements Constants {
 
     public void parse() {
         try {
-
             URL url = new URL(BASE_URL_SPORTS_RU_CHAMPIONSHIP);
             Document doc = Jsoup.parse(url, (int) TimeUnit.SECONDS.toMillis(30));
             Elements elements = doc.getElementsByTag("tbody");

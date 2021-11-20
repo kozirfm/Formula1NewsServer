@@ -65,7 +65,7 @@ public class Db {
         List<News> addedNews = new ArrayList<>();
         try {
             prepareStatementForAddArticles();
-            if (news.size() > 0) {
+            if (news != null && news.size() > 0) {
                 news.forEach(article -> {
                     if (!article.getText().startsWith("Sports.ru") && article.getText() != null) {
                         if (article.getImages() == null) {
@@ -175,7 +175,7 @@ public class Db {
 
     public List<News> getArticlesFromDb(int count) {
         List<News> news = new ArrayList<>();
-        String query = String.format("SELECT id, date, title, link, text FROM articles ORDER BY id DESC LIMIT %d", count);
+        String query = String.format("SELECT id, date, title, link, text, images FROM articles ORDER BY id DESC LIMIT %d", count);
         try {
             ResultSet resultSet = statement.executeQuery(query);
             while (resultSet.next()) {
@@ -184,13 +184,15 @@ public class Db {
                         resultSet.getString("date"),
                         resultSet.getString("title"),
                         resultSet.getString("link"),
-                        resultSet.getString("text")));
+                        resultSet.getString("text"),
+                        resultSet.getBoolean("images")));
             }
             statement.close();
             resultSet.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        getArticlesFromDbWithImages(news);
         return news;
     }
 
