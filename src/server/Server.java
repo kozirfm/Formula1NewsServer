@@ -2,10 +2,7 @@ package server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import data.News;
-import data.Driver;
-import data.GrandPrix;
-import data.Team;
+import data.*;
 import database.Db;
 
 import java.io.BufferedInputStream;
@@ -21,7 +18,7 @@ public class Server {
 
     private static final String HEADER =
             "HTTP/1.1 200 OK\n" +
-                    "Server: MyServer\n" +
+                    "Server: UbuntuServer\n" +
                     "Content-Type: application/json; charset=utf-8\n" +
                     "Connection: close\n\n";
 
@@ -47,8 +44,9 @@ public class Server {
                                 String inputStreamLine = new String(b).trim();
                                 String[] line = inputStreamLine.split("\n");
 
-//                                if (inputStreamLine.startsWith("POST")) {
-//                                    String json = line[line.length - 1];
+                                if (inputStreamLine.startsWith("POST")) {
+                                    String json = line[line.length - 1];
+                                    System.out.println(json);
 //                                    User user = new Gson().fromJson(json, User.class);
 //                                    Db db = new Db();
 //                                    db.connect();
@@ -56,51 +54,24 @@ public class Server {
 //                                        db.addNewUserToDb(user);
 //                                    }
 //                                    db.disconnect();
-//                                }
+                                }
 
                                 if (inputStreamLine.startsWith("GET")) {
                                     String[] headerString = line[0].split(" ");
                                     String requestString = headerString[1];
                                     HashMap<String, Integer> values = parseGetLineWithKeyValue(requestString);
+                                    RequestVersion requestVersion = getRequestVersion(requestString);
                                     if (values.containsKey("count")) {
-                                        try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<News> news = db.getArticlesFromDb(values.get("count"));
-                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(news);
-                                            outputStream.write(page.getBytes());
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                        handleNewsByCount(socket, values, requestVersion);
                                     }
                                     if (values.containsKey("page")) {
-                                        try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<News> news = db.getArticlesFromDbForPage(values.get("page"));
-                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(news);
-                                            outputStream.write(page.getBytes());
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                        handleNewsByPage(socket, values, requestVersion);
                                     }
                                     if (parseSimpleString(requestString).contains("championship")) {
-                                        try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<Driver> drivers = db.getDriversChampionshipTable();
-                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(makeTeamFromDrivers(drivers));
-                                            outputStream.write(page.getBytes());
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                        handleChampionship(socket, requestVersion);
                                     }
                                     if (parseSimpleString(requestString).contains("calendar")) {
-                                        try (OutputStream outputStream = socket.getOutputStream()) {
-                                            List<GrandPrix> grandPrixes = db.getCalendarTable();
-                                            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                                            String page = HEADER + gson.toJson(grandPrixes);
-                                            outputStream.write(page.getBytes());
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                        handleCalendar(socket, requestVersion);
                                     }
                                 }
                             }
@@ -129,6 +100,14 @@ public class Server {
     private String parseSimpleString(String requestString) {
         String[] s = requestString.split("/");
         return s.length > 1 ? s[1] : "";
+    }
+
+    private RequestVersion getRequestVersion(String requestString) {
+        if (parseSimpleString(requestString).startsWith("v2")) {
+            return RequestVersion.VERSION2;
+        } else {
+            return RequestVersion.VERSION1;
+        }
     }
 
     private HashMap<String, Integer> parseGetLineWithKeyValue(String requestString) {
@@ -170,6 +149,57 @@ public class Server {
         });
         teams.sort(Comparator.comparingInt(Team::getPoints).reversed());
         return teams;
+    }
+
+    private <T> String getResponseByVersion(T data, RequestVersion requestVersion) {
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+        String response;
+        if (requestVersion == RequestVersion.VERSION1) {
+            response = gson.toJson(data);
+        } else {
+            response = gson.toJson(new ServerResponse<>("OK", 200, "OK", data));
+        }
+        return response;
+    }
+
+    private void handleNewsByCount(Socket socket, HashMap<String, Integer> values, RequestVersion requestVersion) {
+        try (OutputStream outputStream = socket.getOutputStream()) {
+            List<News> news = db.getArticlesFromDb(values.get("count"));
+            String page = HEADER + getResponseByVersion(news, requestVersion);
+            outputStream.write(page.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleNewsByPage(Socket socket, HashMap<String, Integer> values, RequestVersion requestVersion) {
+        try (OutputStream outputStream = socket.getOutputStream()) {
+            List<News> news = db.getArticlesFromDbForPage(values.get("page"));
+            String page = HEADER + getResponseByVersion(news, requestVersion);
+            outputStream.write(page.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleChampionship(Socket socket, RequestVersion requestVersion) {
+        try (OutputStream outputStream = socket.getOutputStream()) {
+            List<Driver> drivers = db.getDriversChampionshipTable();
+            String page = HEADER + getResponseByVersion(drivers, requestVersion);
+            outputStream.write(page.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleCalendar(Socket socket, RequestVersion requestVersion) {
+        try (OutputStream outputStream = socket.getOutputStream()) {
+            List<GrandPrix> grandPrixes = db.getCalendarTable();
+            String page = HEADER + getResponseByVersion(grandPrixes, requestVersion);
+            outputStream.write(page.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
